@@ -34,7 +34,7 @@ public:
 	}
 
 	template<typename T>
-	T Write(__int64 addr, const T& value) noexcept { WriteProcessMemory(m_hProc, (void*)addr, &value, sizeof(T), nullptr); }
+	bool Write(__int64 addr, const T& value) noexcept { return WriteProcessMemory(m_hProc, (void*)addr, &value, sizeof(T), nullptr); }
 
 public:
 	DWORD GetPID();
@@ -44,6 +44,8 @@ public:
 	bool ResolveProcessByName(const wchar_t* pName);
 	bool ResolveProcessByWindow(const char* pName);
 	std::string ReadString(const __int64 addr, SIZE_T szCount);	//	ATTN: max string size = MAX_PATH. Check if string is valid using std::string::empty.
+	void PauseProcess();
+	void ResumeProcess();
 	static bool IsValidPtr(__int64 addr);
 	static BOOL CALLBACK GetProcWindows(HWND handle, LPARAM lParam);
 
