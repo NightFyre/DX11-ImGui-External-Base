@@ -20,6 +20,7 @@ public:
 	void SetWindowStyle(LONG style);
 	void ClickThrough(bool bIsClickThrough);
 	void SetWindowFocus(HWND window);
+	void ToggleStreamProof();
 	ImVec2 GetScreenSize();
 	ImVec2 GetCloneWindowSize();
 	ImVec2 GetCloneWindowPos();
@@ -38,6 +39,7 @@ public:
 	~DxWindow();
 
 private:
+	bool bStreamproof{ false };
 	HWND m_hwnd{ 0 };
 	WNDCLASSEX m_wc{ };
 	ID3D11Device* m_pd3dDevice{ nullptr };

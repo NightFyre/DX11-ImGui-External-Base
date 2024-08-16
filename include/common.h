@@ -2,6 +2,7 @@
 #define PCH_H
 #define WIN32_LEAN_AND_MEAN             // Exclude rarely-used stuff from Windows headers
 #define _USE_MATH_DEFINES
+#define STREAM_PROOF false				//	set to true to initialize DXWindow as Stream Proof
 
 // STANDARD LIBRARIES
 #include <Windows.h>

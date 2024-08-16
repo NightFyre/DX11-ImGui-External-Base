@@ -19,6 +19,11 @@ DxWindow::DxWindow()
         return;
     }
 
+#if STREAM_PROOF
+    bStreamproof = true;
+    SetWindowDisplayAffinity(m_hwnd, WDA_EXCLUDEFROMCAPTURE);
+#endif
+
     ::ShowWindow(m_hwnd, SW_SHOWDEFAULT);
     ::UpdateWindow(m_hwnd);
 
@@ -129,6 +134,12 @@ void DxWindow::SetWindowFocus(HWND window)
 {
     SetForegroundWindow(window);
     SetActiveWindow(window);
+}
+
+void DxWindow::ToggleStreamProof()
+{
+    DWORD flag = bStreamproof ? WDA_EXCLUDEFROMCAPTURE : WDA_NONE;
+    SetWindowDisplayAffinity(m_hwnd, flag);
 }
 
 ImVec2 DxWindow::GetScreenSize() { return m_szScreen; }
