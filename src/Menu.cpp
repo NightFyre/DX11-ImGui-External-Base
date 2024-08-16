@@ -36,6 +36,10 @@ void Menu::MainMenu()
     ImGui::Text("BASE MENU (PREVIEW)");
     ImGui::Text("BUILD VERSION: v1.0.0");
     ImGui::Text("BUILD DATE: 8/11/2024");
+    ImGui::Checkbox("IMGUI DEMO WINDOW", &this->bShowDemoWindow);
+    ImGui::Checkbox("STYLE EDITOR", &this->bShowStyleEditor);
+    if (ImGui::Button("EXIT", ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetTextLineHeightWithSpacing())))
+        this->bRunning = false;
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -132,11 +136,11 @@ void Menu::UpdateOverlayViewState(bool bState) { elements.bIsShown = bState; }
 
 void GUI::TextCentered(const char* pText)
 {
-    ImVec2 textSize = ImGui::CalcTextSize(pText);
-    ImVec2 windowSize = ImGui::GetWindowSize();
-    ImVec2 textPos = ImVec2((windowSize.x - textSize.x) * 0.5f, (windowSize.y - textSize.y) * 0.5f);
-    ImGui::SetCursorPos(textPos);
-    ImGui::Text("%s", pText);
+    float windowWidth = ImGui::GetWindowSize().x;
+    float textWidth = ImGui::CalcTextSize(pText).x;
+    float posX = (windowWidth - textWidth) * 0.5f;
+    ImGui::SetCursorPosX(posX);
+    ImGui::Text(std::string(pText).c_str());
 }
 
 //  @ATTN: max buffer is 256chars
@@ -175,19 +179,6 @@ void GUI::DrawTextCentered(ImVec2 pos, ImColor color, const char* pText, float f
     DrawText_(textPosition, color, pText, fontSize);
 }
 
-//  void GUI::DrawTextCentered(ImVec2 pos, ImColor color, const char* pText, float fontSize)
-//  {
-//      std::string txt(pText);
-//  
-//      ImVec2 textSize = ImGui::CalcTextSize(pText);
-//  
-//      const char* start = txt.c_str();
-//      const char* end = start + txt.size();
-//  
-//      ImVec2 textPos(pos.x - (textSize.x * .5f), pos.y);
-//      DrawText_(textPos, color, pText, fontSize);
-//  }
-
 //  @ATTN: max buffer is 256chars
 void GUI::DrawTextCenteredf(ImVec2 pos, ImColor color, const char* pText, float fontSize, ...)
 {
@@ -197,5 +188,5 @@ void GUI::DrawTextCenteredf(ImVec2 pos, ImColor color, const char* pText, float 
     vsnprintf(buffer, sizeof(buffer), pText, args);
     va_end(args);
 
-    DrawTextCentered(pos, color, pText, fontSize);
+    DrawTextCentered(pos, color, buffer, fontSize);
 }
