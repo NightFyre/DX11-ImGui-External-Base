@@ -32,7 +32,7 @@ private:
 
 #define IM_COL32_RED ImColor(1.0f, 0.0f, 0.0f, 1.0f)
 #define IM_COL32_BLUE ImColor(0.0f, 1.0f, 0.0f, 1.0f)
-#define IM_COL32_GREEN ImColor(0.0f, 0.0f, 1.0f, 1.0f)
+#define IM_COL32_GREEN ImColor(0.0f, 1.0f, 0.0f, 1.0f)
 #define IM_COL32_YELLOW ImColor(1.0f, 1.0f, 0.0f, 1.0f)
 class GUI
 {

@@ -28,6 +28,11 @@ DxWindow::DxWindow()
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;       // Enable Keyboard Controls
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;        // Enable Gamepad Controls
     io.IniFilename = NULL;                                      // Disable Ini File
+
+    ImGui::StyleColorsDark();
+    ImGuiStyle& style = ImGui::GetStyle();
+    style.WindowTitleAlign = ImVec2(.5f, .5f);
+
     ImGui_ImplWin32_Init(m_hwnd);
     ImGui_ImplDX11_Init(m_pd3dDevice, m_pd3dDeviceContext);
 }
