@@ -1,3 +1,12 @@
+// ============================================================================
+//  NightFyre Frameworks
+//  dxWindow - DirectX Overlay Window Interface
+//
+//  Window tracking, overlay positioning, and DirectX rendering utilities.
+// 
+// https://github.com/NightFyre/DX11-ImGui-External-Base/tree/main
+// ============================================================================
+
 #pragma once
 #include "common.h"
 
