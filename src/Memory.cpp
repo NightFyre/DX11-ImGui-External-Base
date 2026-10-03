@@ -1,182 +1,51 @@
 #include "Memory.h"
 
-Memory::Memory() { m_hWnd = GetConsoleWindow(); }
-
-Memory::Memory(const wchar_t* procName) { m_bAttached = ResolveProcessByName(procName); }
-
-Memory::Memory(const char* windowTitle) { m_bAttached = ResolveProcessByWindow(windowTitle); }
-
-Memory::~Memory()
+Memory::Memory() : exMemory()
 {
-	if (m_hProc != INVALID_HANDLE_VALUE)
-		CloseHandle(m_hProc);
-
-	if (m_hWnd != INVALID_HANDLE_VALUE)
-		CloseHandle(m_hWnd);
+	this->bAttached = Attach("notepad.exe", PROCESS_ALL_ACCESS);
 }
 
-DWORD Memory::GetPID() { return m_PID; }
-
-HANDLE Memory::GetHandle() { return m_hProc; }
-
-HWND Memory::GetHWND() { return m_hWnd; }
-
-__int64 Memory::GetModuleBase() { return m_modBase; }
-
-bool Memory::ResolveProcessByName(const wchar_t* pName)
+Memory::Memory(const std::string& name) : exMemory(name)
 {
-	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-	if (hSnap == INVALID_HANDLE_VALUE)
+	this->bAttached = Attach(name, PROCESS_ALL_ACCESS);
+}
+
+Memory::Memory(const std::string& name, const DWORD& dwAccess) : exMemory(name, dwAccess)
+{
+	this->bAttached = Attach(name, dwAccess);
+}
+
+bool Memory::Attach(const std::string& name, const DWORD& dwAccess)
+{
+	procInfo_t proc;
+	if (!AttachEx(name, &proc, dwAccess))
 		return false;
 
-	PROCESSENTRY32 procEntry;
-	procEntry.dwSize = sizeof(procEntry);
-	if (!Process32Next(hSnap, &procEntry))
+	this->vmProcess = proc;
+
+	this->vmProcess.hWnd = GetProcessWindowEx(this->vmProcess.dwPID);
+
+	return this->vmProcess.bAttached;
+}
+
+bool Memory::Detach()
+{
+	bool result = DetachEx(this->vmProcess);
+
+	return result;
+}
+
+void Memory::update()
+{
+	if (!this->vmProcess.dwPID)
 	{
-		CloseHandle(hSnap);
-		return false;
+		*this = Memory("notepad.exe");
 	}
 
-	do
-	{
-		if (_wcsicmp(procEntry.szExeFile, pName))
-			continue;
+	if (!this->vmProcess.hWnd || !IsWindow(this->vmProcess.hWnd) || !IsWindowVisible(this->vmProcess.hWnd))
+		this->vmProcess.hWnd = GetProcessWindowEx(this->vmProcess.dwPID);
 
-		m_PID = procEntry.th32ProcessID;
-		m_hProc = OpenProcess(PROCESS_ALL_ACCESS, false, procEntry.th32ProcessID);
-
-		HANDLE modSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, m_PID);
-		if (modSnap == INVALID_HANDLE_VALUE)
-		{
-			CloseHandle(hSnap);
-			return false;
-		}
-
-		MODULEENTRY32 me32;
-		me32.dwSize = sizeof(me32);
-		if (!Module32First(modSnap, &me32))
-		{
-			CloseHandle(modSnap);
-			CloseHandle(hSnap);
-			return false;
-		}
-
-		m_modBase = (long long)me32.modBaseAddr;
-
-		CloseHandle(modSnap);
-		CloseHandle(hSnap);
-		
-		EnumWindowData eDat;
-		eDat.procId = m_PID;
-		if (EnumWindows(GetProcWindows, reinterpret_cast<LPARAM>(&eDat)))
-			m_hWnd = eDat.hwnd;
-		
-		return true;
-
-	} while (Process32Next(hSnap, &procEntry));
-
-	CloseHandle(hSnap);
-
-	return false;
-}
-
-bool Memory::ResolveProcessByWindow(const char* windowName)
-{
-	m_hWnd = FindWindowExA(0, 0, 0, windowName);
-	if (!m_hWnd || m_hWnd == INVALID_HANDLE_VALUE)
-		return false;
-
-	if (!GetWindowThreadProcessId(m_hWnd, &m_PID))
-		return false;
-
-	m_hProc = OpenProcess(PROCESS_ALL_ACCESS, false, m_PID);
-	if (!m_hProc || m_hProc == INVALID_HANDLE_VALUE)
-		return false;
-
-	HANDLE hSnap = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, m_PID);
-	MODULEENTRY32 me32;
-	me32.dwSize = sizeof(me32);
-	Module32First(hSnap, &me32);
-	m_modBase = (long long)me32.modBaseAddr;
-	CloseHandle(hSnap);
-}
-
-bool Memory::IsValidPtr(__int64 addr) { return (addr < 0x1000 ? false : addr < 0x000F000000000000); }
-
-std::string Memory::ReadString(const __int64 addr, const SIZE_T szCount)
-{
-	char result[MAX_PATH];
-	
-	if (!ReadProcessMemory(m_hProc, (void*)addr, &result, szCount, nullptr))
-		return std::string();
-	
-	return std::string(result);
-}
-
-BOOL CALLBACK Memory::GetProcWindows(HWND window, LPARAM lParam)
-{
-	auto data = reinterpret_cast<EnumWindowData*>(lParam);
-
-	DWORD windowPID;
-	GetWindowThreadProcessId(window, &windowPID);
-
-	bool isMainWindow = GetWindow(window, GW_OWNER) == (HWND)0 && IsWindowVisible(window);
-	if (windowPID != data->procId || !isMainWindow)
-		return true;
-
-	data->hwnd = window;
-
-	return true;
-}
-
-void Memory::PauseProcess()
-{
-	HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-
-	THREADENTRY32 threadEntry;
-	threadEntry.dwSize = sizeof(THREADENTRY32);
-
-	Thread32First(hThreadSnapshot, &threadEntry);
-
-	do
-	{
-		if (threadEntry.th32OwnerProcessID == m_PID)
-		{
-			HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, threadEntry.th32ThreadID);
-			if (hThread == INVALID_HANDLE_VALUE)
-				continue;
-
-			SuspendThread(hThread);
-
-			CloseHandle(hThread);
-		}
-	} while (Thread32Next(hThreadSnapshot, &threadEntry));
-
-	CloseHandle(hThreadSnapshot);
-}
-
-void Memory::ResumeProcess()
-{
-	HANDLE hThreadSnapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-
-	THREADENTRY32 threadEntry;
-	threadEntry.dwSize = sizeof(THREADENTRY32);
-
-	Thread32First(hThreadSnapshot, &threadEntry);
-
-	do
-	{
-		if (threadEntry.th32OwnerProcessID == m_PID)
-		{
-			HANDLE hThread = OpenThread(THREAD_ALL_ACCESS, FALSE, threadEntry.th32ThreadID);
-			if (hThread == INVALID_HANDLE_VALUE)
-				continue;
-
-			ResumeThread(hThread);
-
-			CloseHandle(hThread);
-		}
-	} while (Thread32Next(hThreadSnapshot, &threadEntry));
-
-	CloseHandle(hThreadSnapshot);
+	char buffer[MAX_PATH];
+	if (this->vmProcess.hWnd && GetWindowTextA(this->vmProcess.hWnd, buffer, MAX_PATH))
+		this->vmProcess.mWndwTitle = std::string(buffer);
 }
