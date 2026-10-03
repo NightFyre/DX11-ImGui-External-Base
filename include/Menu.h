@@ -16,8 +16,11 @@ public:
 	void SHROUD();
 	void HUD();
 
-	DxWindow::SOverlay GetOverlay();
-	void UpdateOverlayViewState(bool bState);
+public:
+	const DxWindow::SOverlay& GetOverlay() const;
+	void SetVisible(bool visible);
+	ImRect GetImGuiMenuBounds();
+	ImRect GetOverlayBounds();
 
 
 public:
