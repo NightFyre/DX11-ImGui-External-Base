@@ -10,23 +10,23 @@ Menu::Menu()
 
 void Menu::Draw()
 {
-    if (bShowMenu)
-        MainMenu();
+    if (!bShowMenu)
+        return;
 
-    if (bShowDemoWindow && bShowMenu)
+    MainMenu();
+
+    if (bShowDemoWindow)
         ImGui::ShowDemoWindow();
 
-    if (bShowStyleEditor && bShowMenu)
+    if (bShowStyleEditor)
         ImGui::ShowStyleEditor();
 }
 
 void Menu::MainMenu()
 {
-    static ImVec2 MenuSize = ImVec2(800, 600);
-    static ImVec2 ScreenSize = g_dxWindow->GetScreenSize();
-    ImVec2 start = { ScreenSize.x / 2 - MenuSize.x / 2, ScreenSize.y / 2 - MenuSize.y / 2 };
-    ImGui::SetNextWindowPos(start);
-    ImGui::SetNextWindowSize(MenuSize);
+    auto MenuRect = GetImGuiMenuBounds();
+    ImGui::SetNextWindowPos(MenuRect.Min);
+    ImGui::SetNextWindowSize(MenuRect.GetSize());
     if (!ImGui::Begin("(DX11) ImGui External Base", &bShowMenu, 96))
     {
         ImGui::End();
@@ -34,8 +34,7 @@ void Menu::MainMenu()
     }            
     
     ImGui::Text("BASE MENU (PREVIEW)");
-    ImGui::Text("BUILD VERSION: v1.0.0");
-    ImGui::Text("BUILD DATE: 8/11/2024");
+    ImGui::Text("BUILD VERSION: v1.2.0");
 
     ImGui::Spacing();
     ImGui::Separator();
@@ -82,11 +81,19 @@ void Menu::MainMenu()
 
 void Menu::SHROUD()
 {
-    ImGui::SetNextWindowPos(ImVec2(0, 0));
-    ImGui::SetNextWindowSize(g_dxWindow->GetScreenSize());
+    const ImRect& wndw = GetOverlayBounds();
+    ImGui::SetNextWindowPos(wndw.Min);
+    ImGui::SetNextWindowSize(wndw.GetSize());
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4());
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.f);
-    if (!ImGui::Begin("##SHROUDWINDOW", (bool*)true, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs)) 
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar 
+        | ImGuiWindowFlags_NoResize 
+        | ImGuiWindowFlags_NoMove 
+        | ImGuiWindowFlags_NoScrollbar 
+        | ImGuiWindowFlags_NoSavedSettings 
+        | ImGuiWindowFlags_NoInputs;
+
+    if (!ImGui::Begin("##SHROUDWINDOW", nullptr, flags))
     {
         ImGui::PopStyleColor();
         ImGui::PopStyleVar();
@@ -100,16 +107,22 @@ void Menu::SHROUD()
 
 void Menu::HUD()
 {
-    ImVec2 draw_pos = g_dxWindow->GetCloneWindowPos();
-    ImVec2 draw_size = g_dxWindow->GetCloneWindowSize();
-    ImGui::SetNextWindowPos(draw_pos);
-    ImGui::SetNextWindowSize(draw_size);
+    const ImRect& wndw = GetOverlayBounds();
+    ImGui::SetNextWindowPos(wndw.Min);
+    ImGui::SetNextWindowSize(wndw.GetSize());
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.00f, 0.00f, 0.00f, 0.00f));
     ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(IM_COL32_RED));
-    if (!ImGui::Begin("##HUDWINDOW", (bool*)true, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoInputs))
+    const ImGuiWindowFlags flags = ImGuiWindowFlags_NoTitleBar 
+        | ImGuiWindowFlags_NoResize 
+        | ImGuiWindowFlags_NoMove 
+        | ImGuiWindowFlags_NoScrollbar 
+        | ImGuiWindowFlags_NoSavedSettings 
+        | ImGuiWindowFlags_NoInputs;
+
+    if (!ImGui::Begin("##HUDWINDOW", nullptr, flags))
     {
-        ImGui::PopStyleColor();
+        ImGui::PopStyleColor(2);
         ImGui::PopStyleVar();
         ImGui::End();
         return;
@@ -117,18 +130,47 @@ void Menu::HUD()
     ImGui::PopStyleColor(2);
     ImGui::PopStyleVar();
 
-
-    ImDrawList* ImDraw = ImGui::GetWindowDrawList();
-    auto center = ImVec2({ draw_size.x * .5f, draw_size.y * .5f });
-    auto top_center = ImVec2({ draw_size.x * .5f, draw_size.y * 0.0f });
-    GUI::DrawTextCentered(top_center + draw_pos, IM_COL32_RED, "https://github.com/NightFyre/DX11-ImGui-External-Base", 12.f);
+    const auto szWndw = ImGui::GetWindowSize();
+    const auto center = szWndw * .5f;
+    const auto top_center = ImVec2({ szWndw.x * .5f, szWndw.y * 0.0f });
+    GUI::DrawTextCentered(top_center, IM_COL32_RED, "https://github.com/NightFyre/DX11-ImGui-External-Base", 12.f);
 
     ImGui::End();
 }
 
-DxWindow::SOverlay Menu::GetOverlay() { return elements; }
+const DxWindow::SOverlay& Menu::GetOverlay() const { return elements; }
 
-void Menu::UpdateOverlayViewState(bool bState) { elements.bIsShown = bState; }
+ImRect Menu::GetImGuiMenuBounds()
+{
+    const ImVec2& szClone = g_dxWindow->GetCloneWindowSize();   //  get the size of the cloned application window
+    const ImVec2& halfClone = szClone * .5;                     //  half application window size
+
+    //  Get Window Size
+    ImVec2 szMenu(halfClone);           //  overlay imgui menu window size
+    ImVec2 szMenuMax(800.f, 600.f);     //  max overlay imgui menu window size
+    szMenu.x = std::min(szMenu.x, szMenuMax.x);
+    szMenu.y = std::min(szMenu.y, szMenuMax.y);
+
+    //  Get Window Position
+    ImVec2 posMenu = halfClone - (szMenu * .5);   //  overlay imgui menu window position
+    return ImRect(posMenu, posMenu + szMenu);
+}
+
+ImRect Menu::GetOverlayBounds()
+{
+    const ImVec2 size = g_dxWindow->GetCloneWindowSize();
+
+    return ImRect(
+        ImVec2(0.0f, 0.0f),
+        size
+    );
+}
+
+void Menu::SetVisible(bool visible)
+{
+    bShowMenu = visible;
+    elements.bIsShown = visible;
+}
 
 void GUI::TextCentered(const char* pText)
 {
